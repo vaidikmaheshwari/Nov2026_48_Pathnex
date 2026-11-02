@@ -1,0 +1,23 @@
+#Day -01 practice L2 
+##Ansible task - install nginx on my server
+rewrite this yaml manually :
+```yaml
+- name: nginx install on my server
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: install nginx
+      yum:
+        name: nginx
+        state: present
+
+Dcoker
+#Dcoker installation and first container
+docker -- version
+docker run ubuntu echo "hello vaidik"
+
+#Docker file
+FROM ubuntu:22.04
+CMD ["echo","Hello everyone"]
+
