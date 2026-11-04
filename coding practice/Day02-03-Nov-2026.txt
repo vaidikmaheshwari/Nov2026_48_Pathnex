@@ -1,0 +1,81 @@
+Day -3 ansible, terraform & kubernetes Basics
+- name: install and start apache
+  hosts: all
+  become: yes
+  tasks:
+    - name: install apache
+      yum: 
+        name: httpd
+        state: present
+    
+    - name: start apache
+      service: 
+        name: httpd
+        state: started
+        enabled: yes
+
+
+
+
+Terraform - ec2 instance(t3.medium)
+provider "aws" {
+  region = "us-east-1"
+}
+resource "aws_instance" "devopsPracticeEC2" {
+   ami = "random"
+   instance_type = "t3.medium"
+   tags = {
+     Name = "vaidik-t3"
+   }
+}
+
+
+kubernetes - create a replicaset with 3 replicas
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: vaidik-replicaset
+spec:
+  replicas: 3
+  selector: 
+    matchLabels:
+      app: vaidik-app
+  template:
+    metadata:
+      labels:
+        app: vaidik-app
+    spec:
+      containers:
+        - name: app
+          image: nginx
+          ports:
+            - containerPort: 80
+
+Shell Script = user Info
+#!/bin/bash  
+echo "Current user: $(whoami)"
+exho "Current user groups: ${groups}"
+
+
+
+
+
+Docker
+#docker file for nginx web Server
+FROM nginx: latest
+COPY index.html /usr/share/nginx/html/index.html
+
+
+
+#HTML
+<h1>Hello Vaidik</h1>
+
+
+#bash
+# real pathne
+/usr/share/nginx/html
+
+# bash
+docker build -t vaidik-nginx .
+docker run -d -p 80:80 vaidik-nginx
+
