@@ -1,0 +1,110 @@
+
+day 08 - introduction to docker and ci cd Pipelines
+ansible - install docker compose
+- name: install docker compose
+  hosts: all
+  become: yes
+  tasks: 
+    - name: install dependencies
+      yum: 
+        name: "python3-pip"
+        state: present
+    - name: install docker-compose
+      pip:
+        name: docker-compose
+
+
+
+terraform ec2 with security group and ebs volume
+resource "aws_security_group" "allow_ssh_http" {
+  name        = "allow_ssh_http"
+  description = "Allow SSH and HTTP access"
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_instance" "vaidik-ec2" {
+  ami = "random"
+  instance_type = "t3.medium"
+  security_groups = [ aws_security_group.allow_ssh_http.name]
+
+  ebs_block_device {
+    device_name = "/dev/sdh"
+    volume_size = 30
+  }
+}
+
+
+kubernets service with nodePort
+apiVersion: v1
+kind: Service
+metadata:
+  name: vaidik-service
+spec:
+  type: NodePort
+  selector:
+    app: vaidik-app
+  ports:
+    - protocol: TCP
+      port: 80
+      nodePort: 30007
+  
+
+
+Jenkinsfile docker build and push
+pipeline {
+  agent any 
+  stages {
+    stage('Build docker image') {
+        steps {
+            script {
+                docker.build('vaidik-app')
+            }
+        }
+    }
+    stage('Push Docker Image') {
+        steps {
+            script {
+                docker.withRegistry('https://docker.io', 'docker-credentials') {
+                    docker.image('vaidik-app').push('latest')
+                }
+            }
+        }
+    }
+  }
+}
+
+
+gitlab ci/cd build and push docker image
+stages:
+  - build
+  - push
+
+build:
+  stage: build
+  script:
+    - docker build -t vaidik-app .
+
+push:
+  stage: push
+  script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD"
+    - docker push vaidik-app
+
+
+Docker
+#alpine Linux
+FROM alpine:latest
+WORKDIR /opt/pathnex/alpine-app
+CMD ["echo", "Hello vaidik"]
