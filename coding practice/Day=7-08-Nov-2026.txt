@@ -1,0 +1,96 @@
+
+
+day -7 automating cloud infrastructure with terraform and ansible
+ansible - setup nginx with custom config
+- name: setup nginx with custom config
+  hosts: all
+  become: yes
+  tasks:
+    - name: install nginx
+      yum: 
+        name: nginx
+        state: present
+    - name: copy custom nginx.conf
+      copy:
+        src: nginx.conf
+        dest: /etc/nginx/nginx.conf
+    - name: start nginx service
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+
+
+
+terraform - provision ec2 with iam role
+resource "aws_iam_role" "ec2_role" {
+  name               = "vaidik_ec2_role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+
+resource "aws_instance" "vaidik-ec2" {
+  ami                  = "random"
+  instance_type        = "t2.medium"
+  iam_instance_profile = aws_iam_role_ec2_role.name
+  tags = {
+    Name = "Vaidik-Ec2"
+  }
+}
+
+
+
+
+kubernetes - configmap and secret Management
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vaidik-config
+data:
+  app.properties: |
+    key=value
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vaidik-secret
+type: Opaque
+data:
+  password: cpfmmpkpo
+
+
+Shell Script archive logs
+#!/bin/bash
+tar -czf /var/log/archived_logs.tar.gz /var/log/*.log
+
+
+
+Docker java application
+#javas
+class Hello {
+    public static void main(String[] args){
+        System.out.println("hello vaidik");
+    }
+}
+
+
+#dockerfile
+
+FROM openjdk:17
+WORKDIR /opt/vaidik/java-app
+COPY Hello.java /opt/vaidik/java-app/
+RUN javac /opt/vaidik/java-app/Hello.java
+CMD ["java","-cp","/opt/vaidik/java-app","hello"]
