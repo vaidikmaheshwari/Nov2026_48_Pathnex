@@ -1,0 +1,5 @@
+4 hr  - lecture revision
+30 min - prepare evening class 
+45 min - create intro video
+1 hr - pre info of tommorrow lecture - k8s creation in aws ui
+
