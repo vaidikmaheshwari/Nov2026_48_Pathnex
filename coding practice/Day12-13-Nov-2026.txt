@@ -1,0 +1,138 @@
+day 12 scaling application and Automation
+ansible - setup autoscaling group(ASG)
+- name: setup auto scaling group
+  hosts: all
+  become: yes
+  tasks:
+    - name: create launch Configuration
+      ec2_asg:
+        name: vaidik-asg
+        region: us-east-1
+        launch_config_name: vaidik-launch-config
+        min_size: 1
+        max_size: 3
+        desired_capacity: 2
+        vpc_zone_indentifier: subnet-1234567
+
+
+
+terraform create a load balancer with ec2 instance_type
+resource "aws_lb" "vaidik_lb" {
+  name               = "vaidik-lb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.allow_ssh_http.id]
+  subnets            = [aws_subnet.public.id]
+}
+resource "aws_instance" "vaidik_ec2" {
+  ami = "ami-12345"
+  instance_type = "t2.micro"
+  load_balancer_type = [aws_security_group.allow_ssh_http.id]
+  tags = {
+      Name = "Vaidik-EC2"
+  }
+}
+
+      
+
+
+kubernetes -horizontal pod autoscaler (hpa) with load balancer
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: vaidik-web-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+       app: vaidik-web-app
+  template:
+    metadata:
+       labels:
+           app: vaidik-web-app
+    spec:
+       containers:
+         - name: web
+           image: nginx
+           ports:
+             - containerPort: 80
+---
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: vaidik-web-app-hpa
+spec:
+  scaleTargetRef:
+     apiVersion: apps/v1
+     kind:Deployment
+     name: vaidik-web-app
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+
+
+
+jenkinsfile - implement parallel stages
+pipeline {
+  agent any 
+  stages {
+      stage('Build & test') {
+         parallel {
+            stage('Build') {
+                steps {
+                    echo 'Building project ...'
+                }
+            }
+            stage('Test') {
+                steps {
+                   echo 'Running test..'
+                }
+            }
+         }
+         
+      }
+      stage('Deploy') {
+          stage {
+             echo 'Deployment project..'
+          }
+      }
+  }
+}
+
+
+gitlab ci/cd - parallel jobs for build & test
+stages:
+  - build
+  - test
+  - deploy
+
+build:
+  stage: build
+  script:
+    - docker build -t vaidik-web-app .
+
+test:
+  stage: test
+  script:
+    - docker run vaidik-web-app npm test
+
+deploy: 
+  stage: deploy
+  script:
+    - kubectl apply -f kubernetes/deployment.yaml
+
+
+docker
+#docker Volumes
+FROM ubuntu
+VOLUME ["/opt/vaidik/data"]
+CMD ["sleep", "1000"]
+
+
+#real path
+/opt/vaidik/data
+
+
+#bash command
+docker volume create vaidik-volume
