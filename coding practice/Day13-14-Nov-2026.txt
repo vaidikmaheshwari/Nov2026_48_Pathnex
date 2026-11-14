@@ -1,0 +1,144 @@
+
+
+day 13 advanced automation with cloudformation and ci/cd
+ansible - multi node nginx Setup
+- name: setup nginx on multiple nodes
+  hostS: all
+  become: yes
+  tasks:
+    - name: install nginx
+      yum:
+        name: nginx
+        state: present
+    
+    - name: start nginx service
+      service: 
+        name: nginx
+        state: started
+        enabled: yes
+
+
+
+
+terraform create iam users and Policies
+resource "aws_iam_user" "vaidik" {
+  name="vaidik"
+}
+resource "aws_iam_policy" "vaidik_policy" {
+  name        = "vaidik-policy"
+  description = "policy for pathnex application"
+  policy      = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [
+      {
+        Action   = "s3:ListBucket"
+        Effect   = "Allow"
+        Resource = "arn:aws:s3:::vaidik-bucket"
+      },
+    ]
+  })
+
+}
+
+
+kubernetes - deploy nginx with configmap and Secrets
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  nginx.conf: |
+    server {
+      listen 80;
+      server_name localhost;
+      location / {
+        root /usr/share/nginx/html;
+        index index.html index.htm;
+      }
+    }
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nginx-secret
+type: Opaque
+data:
+  password: cspfjmkmp
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaidik-nginx
+spec:
+  replicas: 2
+  selector: 
+    matchLabels:
+      labels:
+        app: vaidik-nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+          volumeMounts: /
+             - mountPath: etc/nginx/nginx.conf
+               name: nginx-config
+               subPath: nginx.conf
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: nginx-config
+        - name: nginx-secret
+          secret:
+            secretName: nginx-secret
+            
+    
+jenkinsfile multi branch pipeline with docker build
+pipeline {
+  agent any 
+  stages {
+      stage('Build') {
+          steps {
+              script {
+                  docker.build('vaidik-app')
+              }
+          }
+      }
+      stage('Deploy') {
+          steps {
+              script {
+                  kubectl apply -f kubernetes/deployment.yaml
+              }
+          }
+      }
+  }
+}
+
+
+gitlab ci/cd - advanced deployment with helm
+stages:
+  - build
+  - push
+  - deploy
+
+build:
+  stage: build
+  script:
+    - docker build -t vaidik-web-app .
+
+push: 
+  stage: push 
+  script:
+    - docker login -u "$CI_REGISTRY_USER" -p "CI_REGISTRY_PASSWORD"
+    - docker push vaidik-web-app
+
+deploy:
+  stage: deploy
+  script: 
+    - helm repo add vaidik https://charts.vaidik.com
+    - helm install vaidik-nginx vaidik/nginx-ingress
+
+docker
+#copy vs add
+FROM ubuntu
+COPY vaidik-file.txt /opt/vaidik/files/
+Add pathnext.tar.gz /opt/vaidik/extracted/
