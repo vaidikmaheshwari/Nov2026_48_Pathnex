@@ -1,0 +1,116 @@
+
+
+day 15 automation with terraform ansible and ci/cd Pipelines
+ansible - deploy a web application to multiple hosts
+- name: deploy web application to multiple hosts
+  hosts: all
+  become: yes
+  tasks:
+    - name: copy web app files
+      copy: 
+        src: /path/to/web/app/
+        dest: /var/www/html/
+    - name: start web app service
+      service:
+        name: apache2
+        state: started
+        enabled: yes
+
+
+
+terraform create ec2 with alb(application load balancer)
+resource "aws_lb" "vaidik_lb" {
+   name               = "vaidik-lb"
+   internal           = false
+   load_balancer_type = "application"
+   security_groups    = [aws_security_group.allow_ssh_http.id]
+   subnets            = [aws_subnet.public.id]
+}
+resource "aws_instance" "vaidik_ec2" {
+    ami             = "ami-123434"
+    instance_type   = "t2.micro"
+    security_groups = [aws_security_group.allow_ssh_http.name]
+    tags = {
+       Name = "Vaidik-Ec2"
+    }
+}
+
+
+
+kubernetes.- helm chart for redis with persistence
+helm install vaidik-redis bitnami/redis --set persistence.enabled=true --set persistence.size=8Gi
+
+
+jenkinsfile multienvironment deployment
+pipeline {
+   agent any 
+   environment {
+      IMAGE_NAME = 'vaidik-web-app'
+      DEPLOY_ENV = 'production'
+   }
+   stages {
+      stage('Build') {
+          steps {
+              echo 'Building Docker iMage..'
+              docker.build("${env.IMAGE_NAME}")
+          }
+      }
+      stage('Test'){
+          steps {
+             echo 'Running tests...'
+          }
+      }
+      stage('Deploy to kubernetes'){
+          steps {
+              script {
+                 if (env.DEPLOY_ENV == 'production') {
+                    sh 'kubectl apply -f kubernetes/prod.deployment.yaml'
+                 } else {
+                    sh 'kubectl apply -f kubernetes/dev-deployment.yaml'
+                 }
+              }
+          }
+      }
+   }
+}
+
+
+gitlab ci/cd environment specific Deployments
+stages:
+  - build
+  - push
+  - deploy
+
+build:
+  stage: build
+  script: 
+    - docker build -t vaidik-web-app .
+
+push:
+  stage: push
+  script:
+    - docker login -u "$CI_REGISTRY_USER" -p "CI_REGISTRY_PASSWORD"
+    - docker push vaidik-web-app
+
+deploy:
+  stage: deploy
+  script:
+    - | 
+      if ["$CI_COMMIT_REF_NAME" == "main"]; then
+        kubectl apply -f kubernetes/prod-deployment.yaml
+      else 
+        kubectl apply -f kubernetes/dev-deployment.yaml
+      fi
+
+
+
+Docker
+multi run Commands
+FROM ubuntu
+RUN apt update && \
+    apt install curl -y && \
+    apt install vim -y
+
+CMD ["echo", "Hello Vaidik"]
+
+
