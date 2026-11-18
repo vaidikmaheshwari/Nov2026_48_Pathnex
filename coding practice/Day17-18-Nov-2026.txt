@@ -1,0 +1,142 @@
+
+day 18 high Availability, multi region and autoscaling
+## ansible configure HAProxy for load Balancing
+```yaml
+- name: setup haproxy load Balancer
+  hosts: all 
+  become: yes
+  tasks:
+    - name: install haproxy
+      yum:
+        name: haproxy
+        state: present
+    - name: configure haproxy
+      template:
+        src: haproxy.cfg.j2
+        dest: /etc/haproxy/haproxy.cfg
+    - name: start haproxy service
+      service:
+        name: haproxy
+        state: started
+        enabled: yes
+
+
+terraform multi region auto scaling group with ALB
+resource "aws_lb" "vaidik_lb" {
+   name               = "vaidik-lb"
+   internal           = false
+   load_balancer_type = "application"
+   security_groups    = [aws.security_group.allow_ssh_http.id]
+   subnets            = [aws_subnet.public.id, aws_subnet.public2.id]
+}
+resource "aws_autoscaling_group" "vaidik_asg" {
+  desired_capacity     = 3
+  max_size             = 5
+  min_size             = 2
+  vpc_zone_identifier  = [aws_subnet.public.id, aws_subnet.public2.id]
+  launch_configuration = aws_launch_configuration.vaidik_config.id
+}
+
+
+kubernetes - horizontal pod autoscaler with multiple replicas
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaidik-web-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: vaidik-web-app
+  template:
+    metadata:
+      labels: 
+        app: vaidik-web-app
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+          ports:
+            - containerPort: 80
+---
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: vaidik-web-app-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vaidik-web-app
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+
+jenkinsfile - blue green deployment Strategy
+pipeline {
+  agent any 
+  stages {
+      stage('Build') {
+          steps {
+              echo 'building docker image...'
+              docker.build('vaidik-web-app')   
+          }
+      }
+      stage('Test') {
+          steps {
+              echo 'running tests..'
+          }
+      }
+      stage('blue green deployment') {
+          steps {
+             script {
+                sh 'kubectl apply -f kubernetes/blue-deployment.yaml'
+                sh 'kubectl apply -f kubernetes/green-deployment.yaml'
+                sh 'kubectl rollout status deployment/blue-deployment'
+                sh 'kubectl rollout status deployment.greendpeloyment'
+             }
+          }
+      }
+  }
+}
+
+
+
+gitlab ci/cd blue green deployment wit kubernetes
+stages:
+  - build
+  - push
+  - deploy
+
+build:
+  stage: build
+  script:
+    - docker build -t vaidik-web-app .
+
+push:
+  stage: push
+  script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD"
+    - docker push vaidik-web-app
+
+deploy:
+  stage: deploy
+  script:
+    - kubectl apply -f kubernetes/blue-deployment.yaml
+    - kubectl apply -f kubernetes/green-deployment.yaml
+    - kubectl rollout status kubernetes/blue-deployment
+    - kubectl rollout status kubernetes/green-deployment
+
+🔹 Docker
+# Redis Container
+docker run -d --name pathnex-redis redis
+
+docker
+#redis container
+docker run -d --name vaidik-redis redis
+
+
+#real path
+/data
