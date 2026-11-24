@@ -1,0 +1,130 @@
+
+day 21 multi cluster kubernetes Management
+ansible - deploy nginx across multiple kubernetes clusters
+- name: deploy nginx acroos multiple kubernetes Clusters
+  hosts: localhost
+  tasks:
+    - name: configure kubectl for cluster 1
+      command: kubectl --context=us-east config use-context us-east-cluster
+    - name: deploy nginx on cluster 1
+      command: kubectl apply -f kubernetes/deployment.yaml
+    - name: configure kubectl for cluster 2
+      command: kubectl --context=us-west config use-context us-west-cluster
+    - name: deploy nginx on cluster 2
+      command: kubectl apply -f kubernetes/deployment.yaml
+
+
+terraform - multi region kubernetes cluster with eks and gke
+resource "aws_eks_cluster" "vaidik_eks" {
+   name     = "vaidik-eks-cluster"
+   role_arn = aws_iam_role.eks_cluster_role.arn
+   vpc_config {
+     subnet_ids = [aws_subnets.pathnex_subnet.id]
+   }
+   depends_on = [aws_iam_role_policy_attachment.eks_cluster_role_policy]
+}
+
+resource "google_container_cluster" "vaidik_gke" {
+   name               = "vaidik-gke-cluster"
+   location           = "us-central1-a"
+   initial_node_count = 3
+   node_config {
+      machine_type = "n1-standard-1"
+   }
+}
+
+
+kubernetes - federated deployment with multiple clusters
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaidik-Deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: vaidik-app
+  template:
+    metadata:
+      labels:
+        app: vaidik-app
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+          ports:
+            - containerPort:80
+---
+apiVersion: federation.k8s.io/v1beta1
+kind: FederatedDeployment
+metadata:
+  name: vaidik-federated-deployment
+  namespace: default
+spec:
+  template:
+    spec:
+      replicas: 3
+      selector:
+        matchLabels:
+          app: vaidik-app
+      template:
+        metadata:
+          labels:
+            app: vaidik-app
+        spec:
+          containers:
+            - name: nginx
+              image: nginx
+              ports:
+                - containerPort: 80
+
+
+jenkinsfile - multicluster deployment Strategy
+pipeline {
+    agent any 
+    stages {
+        stage('Deploy to cluster 1') {
+           steps {
+              script {
+                  sh 'kubectl --context=us-east-cluster apply -f kubernetes/deployment.yaml'
+              }
+           }
+        }
+        stage('Deploy to cluster 2') {
+            steps {
+                script {
+                   sh 'kubectl --context=us-west-cluster apply -f kubernetes/deployment.yaml'
+                }
+            }
+        }
+    }
+}
+
+
+gitlab ci/cd - multi-cluster deployment Strategy
+stages:
+  - deploy
+
+deploy_cluster_1:
+  stage: deploy
+  script:
+    - kubectl --context=us-east-cluster apply -f kubernetes/deployment.yaml
+
+deploy_cluster_2:
+  stage: deploy
+  script:
+    - kubectl --context=us-west-cluster apply -f kubernetes/deployment.yaml
+
+
+Docker
+#compose with mysql
+version: '1'
+services:
+  db:
+    image: mysql:8
+    container_name: vaidik-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+  web:
+    image: nginx
+    container_name: vaidik-web
