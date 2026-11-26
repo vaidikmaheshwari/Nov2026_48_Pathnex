@@ -1,0 +1,93 @@
+day 24 advanced terraform modules and ci/cd pipeline scaling
+ansible - deploy docker containers with kuberenetes using helm
+
+```yaml
+- name: deploy docker containers with helm
+  hosts: localhost
+  tasks:
+    - name: install helm
+      command: curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+    - name: deploy microservice with helm
+      command: helm install vaidik-app ./microservice-chart
+
+
+
+terraform - multi module infrastructure with Outputs
+module "vaidik_vpc" {
+  source = "./vpc"
+}
+module "vaidik_instance" {
+  source = "./instance"
+  vpc_id = module.vaidik_vpc.vpc_id
+}
+output "instance_id" {
+  value = module.vaidik_instance.instance_id
+}
+
+kubernetes - helm-based autoscaling Deployments
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaidik-web-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: vaidik-web-app
+  template:
+    metadata:
+      labels:
+        app: vaidik-web-app
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+          ports:
+            - containerPort: 80
+---
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: vaidik-web-app-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name:vaidik-web-app
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+
+
+jenkinsfile - scaling ci/cd pipeline
+pipeline {
+    agent any
+    stages {
+        stage('scale up') {
+            steps {
+                echo 'scaling up jenkins pipeline agents for heavy workloads...'
+            }
+        }
+        stage('build') {
+            steps {
+                echo 'building project../'
+            }
+        }
+        stage('deploy') {
+            steps {
+                echo 'deploying project...'
+            }
+        }
+    }
+}
+
+
+
+docker 
+#healthcheck
+
+
+FROM nginx
+HEALThCHECK CMD curl --fail http://localhost || exit 1
