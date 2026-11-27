@@ -1,0 +1,124 @@
+# Day 25 — Continuous Monitoring and Alerts
+
+day 25 continuous monitoring and alerts
+ansible - setup prometheus node exporter for monitoring
+```yaml
+- name: setup prometheus node exporter
+  yum:
+     name: prometheus-node-exporter
+     state: present
+- name: start prometheus node exporter service
+  service:
+     name: prometheus-node-exporter
+     state: started
+     enabled: yes
+
+
+terraform create cloudwatch alarms
+resource "aws_cloudwatch_metric_alaram" "vaidik_cpu_alarm" {
+   alarm_name          = "vaidik-cpu-utilization-high"
+   comparison_operator = "GreaterThanThreshold"
+   evaluation_periods  = "1"
+   metric_name         = "CPUUtilization"
+   namespace           = "AWS/EC2"
+   period              = "60"
+   statistic           = "Average"
+   threshold           = "80"
+
+   dimensions = {
+     InstanceId = aws_instance.vaidik_ec2.id
+   }
+
+   alarm_actions = [aws_sns_topic.vaidik_alerts.arn]
+}
+resource "aws_sns_topic" "vaidik_alerts" {
+   name = "vaidik-alerts"
+}
+
+
+
+kubernetes - setup prometheus and grafana
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+spec:
+  replicas: 1
+  selector: 
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:latest
+          ports:
+            - containerPort: 9090
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:latest
+          ports:
+            - containerPort: 3000
+
+
+jenkinsfile - continuous monitoring and alerts in ci pipeline
+pipeline {
+    agent any 
+    stages {
+        stage('Monitor') {
+            steps {
+                script {
+                    echo 'triggering cloudwatch alarms if cpu exceeds 80%'
+                    sh 'aws cloudwatch put-metric-data --namespace "AWS/EC2" --metric-name "CPUUtlization" --value 90'
+                }
+            }
+        }
+        stage('Test') {
+            steps {
+                echo 'Running tests...'
+            }
+        }
+    }
+}
+
+
+gitlab ci/cd - monitoring and alerting in ci/cd pipeline
+stages:
+  - monnitor
+  - test
+
+monitor:
+  stage: monitor
+  script:
+    - aws cloudwatch put-metric-data --namespace "AWS/EC2" --metric-name "CPUUtilization" --value 90
+test:
+  stage: test
+  script:
+    - echo 'running tests...'
+
+
+
+Docker
+# .dockerignore file
+node_modules
+.git
+temp
