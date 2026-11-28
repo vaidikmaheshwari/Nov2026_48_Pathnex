@@ -1,0 +1,98 @@
+
+day 26 security best Practice
+ansible - implementing ssh keybased Authentication
+- name: implement ssh key Authentication 
+  hosts: all
+  become: yes
+  tasks:
+    - name: Generate SSH key pair
+      command: ssh-keygen -t rsa -b 2048 -f /home/user/.ssh/id_rsa -N ""
+    - name: add ssh public key to authorized_keys
+      authorized_key:
+        user: user
+        state: present
+        key: "{{ lookup('file', '/home/user/.ssh/id_rsa.pub')}}"
+
+
+
+terraform = enabling vpc flow logs for security
+resource "aws_vpc_flow_log" "vaidik_flow_log" {
+   log_group_name = "vaidik-flow-logs"
+   vpc_id = aws_vpc.vaidik_vpc.id
+   traffic_type = "ALL"
+   log_destination_type = "cloud-watch-logs"
+}
+resource "aws_cloudwatch_log_group" "vaidik_flow_logs_group" {
+   name = "vaidik-flow-logs"
+}
+
+
+
+kubernetes - network policies for security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: vaidik-web-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: vaidik-web-app
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: vaidik-api
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: vaidik-database
+
+
+jenkinsfile - secure the pipeline with Secrets
+pipeline {
+    agent any 
+    environment {
+       AWS_ACCESS_KEY_ID = credentials('aws-access-key')
+       AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
+    }
+    stages {
+       stage('build') {
+          steps {
+              echo 'building docker image...'
+              docker.build('vaidik-web-app')
+          }
+       }
+       stage('deploy') {
+          steps {
+              echo 'deploying to aws ec2...'
+              sh 'aws ec2 run-instances --image-id ami-3423ds --count 1 --instane-type t2.micro'
+          }
+       }
+    }
+}
+
+gitlab ci/cd - use gitlab secrets for secure Deployment
+stages:
+  - build
+  - deploy
+
+build:
+  stage: build
+  script:
+    - docker build -t vaidik-web-app .
+
+deploy:
+  stage: deploy
+  script:
+    - echo "deploying with secure credentials"
+    - aws ec2 run-instances --image-id ami-3432sdsd --count 1 --instance-type t2.micro --access-key $AWS_ACCESS_KEY --secret-key $AWS_SECRET_KEY
+
+
+docker
+#docker logs & inspect
+docker logs vaidik-nginx
+docker inspect vaidik-nginx
